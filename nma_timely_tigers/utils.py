@@ -15,8 +15,4 @@ def add(a, b):
     """
     return a + b
 
-def _add_test():
-    """Simple addition test
-    """
-    c = add(1, 2)
-    print(f'1 + 2 = {str(c)}')
+
