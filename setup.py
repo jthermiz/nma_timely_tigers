@@ -4,12 +4,10 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="evaltools",
+    name="nma_timely_tigers",
     version="0.0.1",
-    author="Byron Galbraith",
-    author_email="byron.galbraith@gmail.com",
-    description="Utility tools for evaluation and diagnostics of NMA content",
-    long_description=long_description,
+    author="John Hermiz",
+    description="NMA course project on noise correlations in ANNs",
     long_description_content_type="text/markdown",
     url="https://github.com/jthermiz/nma_timely_tigers",
     packages=setuptools.find_packages(),
