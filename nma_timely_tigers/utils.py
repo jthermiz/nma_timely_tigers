@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
+from torch.nn import utils
 import torch.optim as optim
+import numpy as np
+from torch.utils.data import DataLoader, TensorDataset
+from tqdm.notebook import tqdm, trange
 
 
 def add(a, b):
@@ -21,6 +25,14 @@ def add(a, b):
     return a + b
 
 
+def toy_data(num_class, num_examples=100, num_features=2, noise=0.01):
+    y = np.random.randint(num_class, size=num_examples)
+    X = noise*np.random.randn(num_examples, num_features)
+    for offset in range(num_class):
+        X[y == offset] += offset
+    return X, y
+
+
 def set_device():
     """Set device
 
@@ -38,12 +50,126 @@ def set_device():
     return device
 
 
-def train(model, X, y, **kwargs):
-    NotImplementedError('TODO')
+def train(model, X, y, epochs=10, criterion=None, optimizer=None, **kwargs):
+
+    if criterion is None:
+        criterion = nn.CrossEntropyLoss()
+
+    if optimizer is None:
+        optimizer = optim.Adam(model.parameters(), lr=1e-2)
+
+    if 'batch_size' in kwargs:
+        batch_size = kwargs['batch_size']
+    else:
+        batch_size = 32
+
+    if 'device' in kwargs:
+        device = kwargs['device']
+    else:
+        device = set_device()
+
+    X = torch.Tensor(X).float()
+    y = torch.Tensor(y).long()
+    train_loader = TensorDataset(X, y)
+    train_loader = DataLoader(train_loader, batch_size=batch_size)
+
+    model.train()
+    for epoch in range(epochs):
+        with tqdm(train_loader, unit='batch') as tepoch:
+            for data, target in tepoch:
+                data, target = data.to(device), target.to(device)
+                optimizer.zero_grad()
+                output = model(data)
+
+                loss = criterion(output, target)
+                loss.backward()
+                optimizer.step()
+                tepoch.set_postfix(loss=loss.item())
+                # Not sure what this sleep if for
+                # time.sleep(0.1)
 
 
 def test(model, X, y, **kwargs):
-    NotImplementedError('TODO')
+    """Test model
+
+    Parameters
+    ----------
+    model : pytorch model
+        Neural network
+    X : 2D array
+        Feature matrix, examples by features
+    y : 1D array
+        Labels
+
+    Returns
+    -------
+    Numeric
+        Test accuracy
+    """
+    correct = 0
+    total = 0
+
+    if 'device' in kwargs:
+        device = kwargs['device']
+    else:
+        device = set_device()
+
+    X = torch.Tensor(X)
+    y = torch.Tensor(y)
+    total = len(y)
+    data_loader = TensorDataset(X, y)
+    for data in data_loader:
+        inputs, labels = data
+        inputs = inputs.to(device).float()
+        labels = labels.to(device).long()
+
+        outputs = model(inputs)
+        # I'm not sure if this is correct -- re-visit
+        predicted = torch.argmax(outputs)
+        correct += (predicted == labels).sum().item()
+
+    acc = 100 * correct / total
+    return acc
+
+
+def shuffle_and_split_data(X, y, train_frac=0.7, seed=1):
+    """Shuffle dataset into train and test set
+
+    Parameters
+    ----------
+    X : 2D array
+        Feature matrix (examples by features)
+    y : 1D array
+        Label array
+    train_frac : float, optional
+        Fraction of samples to split to train set, by default 0.7
+    seed : int, optional
+        Random seed, by default 1
+
+    Returns
+    -------
+    tuple
+        Train features and labels and test features and labels
+    """
+    # set seed for reproducibility
+    np.random.seed(seed)
+    # Number of samples
+    N = X.shape[0]
+    # Shuffle data
+    # get indices to shuffle data, could use torch.randperm
+    shuffled_indices = np.random.randint(N, size=N)
+    X = X[shuffled_indices]
+    y = y[shuffled_indices]
+
+    # Split data into train/test
+    # assign test datset size using 20% of samples
+    train_size = int(train_frac * N)
+    X_test = X[:train_size]
+    y_test = y[:train_size]
+    X_train = X[train_size:]
+    y_train = y[train_size:]
+
+    return X_test, y_test, X_train, y_train
 
 
 def average_trials_across_time(spks, start_time, end_time, fs=100):
@@ -80,11 +206,15 @@ def get_neurons_by_brain_area(dat, areas=[]):
     areas : list, optional
         Brain areas, by default []. List of all brain areas:
         [["VISa", "VISam", "VISl", "VISp", "VISpm", "VISrl"], # visual cortex
-                ["CL", "LD", "LGd", "LH", "LP", "MD", "MG", "PO", "POL", "PT", "RT", "SPF", "TH", "VAL", "VPL", "VPM"], # thalamus
+                ["CL", "LD", "LGd", "LH", "LP", "MD", "MG", "PO", "POL",
+                    "PT", "RT", "SPF", "TH", "VAL", "VPL", "VPM"], # thalamus
                 ["CA", "CA1", "CA2", "CA3", "DG", "SUB", "POST"], # hippocampal
-                ["ACA", "AUD", "COA", "DP", "ILA", "MOp", "MOs", "OLF", "ORB", "ORBm", "PIR", "PL", "SSp", "SSs", "RSP","TT"], # non-visual cortex
-                ["APN", "IC", "MB", "MRN", "NB", "PAG", "RN", "SCs", "SCm", "SCig", "SCsg", "ZI"], # midbrain
-                ["ACB", "CP", "GPe", "LS", "LSc", "LSr", "MS", "OT", "SNr", "SI"], # basal ganglia 
+                ["ACA", "AUD", "COA", "DP", "ILA", "MOp", "MOs", "OLF", "ORB",
+                    "ORBm", "PIR", "PL", "SSp", "SSs", "RSP","TT"], # non-visual cortex
+                ["APN", "IC", "MB", "MRN", "NB", "PAG", "RN",
+                    "SCs", "SCm", "SCig", "SCsg", "ZI"], # midbrain
+                ["ACB", "CP", "GPe", "LS", "LSc", "LSr",
+                    "MS", "OT", "SNr", "SI"], # basal ganglia
                 ["BLA", "BMA", "EP", "EPd", "MEA"] # cortical subplate
                 ]
 
