@@ -114,22 +114,27 @@ def train(model, X, y, epochs=10, criterion=None, optimizer=None, **kwargs):
     acc_mat = np.zeros((epochs, 2))
     model.train()
     for epoch in range(epochs):
-        with tqdm(train_loader, unit='batch') as tepoch:
-            for data, target in tepoch:
-                data, target = data.to(device), target.to(device)
-                optimizer.zero_grad()
-                output = model(data)
+        for data, target in train_loader:
+            data, target = data.to(device), target.to(device)
+            optimizer.zero_grad()
+            output = model(data)
 
-                loss = criterion(output, target)
-                loss.backward()
-                optimizer.step()
-                tepoch.set_postfix(loss=loss.item())
+            loss = criterion(output, target)
+            loss.backward()
+            optimizer.step()
 
-                train_acc = test(model, X, y)
-                val_acc = test(model, Xval, yval)
-                acc_mat[epoch, 0] = train_acc
-                acc_mat[epoch, 1] = val_acc
+            train_acc = test(model, X, y)
+            val_acc = test(model, Xval, yval)
+            acc_mat[epoch, 0] = train_acc
+            acc_mat[epoch, 1] = val_acc
 
+        if (epoch % 1000) == 0:
+            print(f'On epoch {str(epoch)} of {str(epochs)}')
+            print(f'Train accuracy: {str(round(train_acc, 3))}')
+            print(f'Validation accuracy: {str(round(val_acc, 3))}')
+            print('')
+
+    print('Finished training!')
     acc_df = pd.DataFrame(data=acc_mat,
                           columns=['Train', 'Test'],
                           index=range(epochs))
