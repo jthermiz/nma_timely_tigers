@@ -45,15 +45,27 @@ def test_shuffle_and_split_data():
 
 
 def test_test():
-    net = models.TwoLayer(2, 2, 3)
+    net = models.TwoLayer(2, 10, 3)
     X, y = utils.toy_data(3)
+    porig = net.parameters()
     acc = utils.test(net, X, y)
+    pnew = net.parameters()
+    if not utils.parameters_equal(porig, pnew):
+        print('Change in parameters! Fix test function!')
     print(f'Test accuracy: {str(round(acc, 3))}')
 
 
 def test_train():
-    net = models.TwoLayer(2, 2, 3)
+    net = models.TwoLayer(2, 10, 3)
     X, y = utils.toy_data(3)
     utils.train(net, X, y)
     acc = utils.test(net, X, y)
+    # Accuracy varies widely brain on network and training parameters!
     print(f'Train accuracy: {str(round(acc, 3))}')
+
+
+def test_plot_accuracy():
+    net = models.TwoLayer(2, 10, 3)
+    X, y = utils.toy_data(3)
+    acc_df = utils.train(net, X, y)
+    utils.plot_accuracy(acc_df)

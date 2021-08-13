@@ -5,6 +5,8 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm.notebook import tqdm, trange
+import pandas as pd
+import matplotlib.pyplot as plt
 
 
 def add(a, b):
@@ -51,12 +53,33 @@ def set_device():
 
 
 def train(model, X, y, epochs=10, criterion=None, optimizer=None, **kwargs):
+    """Train a model
 
+    Parameters
+    ----------
+    model : nn.Module class
+        pytorch model
+    X : 2D array
+        Feature matrix, examples by features
+    y : 1D array
+        Labels
+    epochs : int, optional
+        Number of training, by default 10
+    criterion : loss class, optional
+        Loss function, by default None which corresponds to cross entropy loss
+    optimizer : optimizer class, optional
+        Optimizer class, by default None which corresponds to SGD
+
+    Returns
+    -------
+    Dataframe
+        Train and validation accuracies
+    """
     if criterion is None:
         criterion = nn.CrossEntropyLoss()
 
     if optimizer is None:
-        optimizer = optim.Adam(model.parameters(), lr=1e-2)
+        optimizer = optim.SGD(model.parameters(), lr=1e-2)
 
     if 'batch_size' in kwargs:
         batch_size = kwargs['batch_size']
@@ -68,11 +91,25 @@ def train(model, X, y, epochs=10, criterion=None, optimizer=None, **kwargs):
     else:
         device = set_device()
 
-    X = torch.Tensor(X).float()
-    y = torch.Tensor(y).long()
-    train_loader = TensorDataset(X, y)
-    train_loader = DataLoader(train_loader, batch_size=batch_size)
+    if 'train_frac' in kwargs:
+        train_frac = kwargs['train_frac']
+    else:
+        train_frac = 0.7
 
+    if 'seed' in kwargs:
+        seed = kwargs['seed']
+    else:
+        seed = 0
+
+    X, y, Xval, yval = shuffle_and_split_data(X, y,
+                                              train_frac=train_frac,
+                                              seed=seed)
+
+    X = convert_to_tensor(X).float()
+    y = convert_to_tensor(y).long()
+    train_data = TensorDataset(X, y)
+    train_loader = DataLoader(train_data, batch_size=batch_size)
+    acc_mat = np.zeros((epochs, 2))
     model.train()
     for epoch in range(epochs):
         with tqdm(train_loader, unit='batch') as tepoch:
@@ -85,8 +122,16 @@ def train(model, X, y, epochs=10, criterion=None, optimizer=None, **kwargs):
                 loss.backward()
                 optimizer.step()
                 tepoch.set_postfix(loss=loss.item())
-                # Not sure what this sleep if for
-                # time.sleep(0.1)
+
+                train_acc = test(model, X, y)
+                val_acc = test(model, Xval, yval)
+                acc_mat[epoch, 0] = train_acc
+                acc_mat[epoch, 1] = val_acc
+
+    acc_df = pd.DataFrame(data=acc_mat,
+                          columns=['Train', 'Test'],
+                          index=range(epochs))
+    return acc_df
 
 
 def test(model, X, y, **kwargs):
@@ -109,22 +154,17 @@ def test(model, X, y, **kwargs):
     correct = 0
     total = 0
 
-    if 'device' in kwargs:
-        device = kwargs['device']
-    else:
-        device = set_device()
-
-    X = torch.Tensor(X)
-    y = torch.Tensor(y)
+    X = convert_to_tensor(X)
+    y = convert_to_tensor(y)
     total = len(y)
     data_loader = TensorDataset(X, y)
     for data in data_loader:
         inputs, labels = data
-        inputs = inputs.to(device).float()
-        labels = labels.to(device).long()
+        # Assume that everything is in the same memory space
+        #inputs = inputs.to(device).float()
+        #labels = labels.to(device).long()
 
         outputs = model(inputs)
-        # I'm not sure if this is correct -- re-visit
         predicted = torch.argmax(outputs)
         correct += (predicted == labels).sum().item()
 
@@ -230,3 +270,39 @@ def get_neurons_by_brain_area(dat, areas=[]):
             neurons.append(nidx)
     area_spks = dat['spks'][neurons]
     return area_spks, neurons
+
+
+def parameters_equal(param1, param2):
+    """Checks to see if model parameters from two models are equal
+
+    Parameters
+    ----------
+    param1 : Generator
+        Generator from nn.Module.parameters()
+    param2 : Generator
+        Generator from nn.Module.parameters()
+
+    Returns
+    -------
+    bool
+        Whether parameters are equal
+    """
+    for ele1 in param1:
+        ele2 = next(param2)
+        if not torch.equal(ele1, ele2):
+            return False
+    return True
+
+
+def convert_to_tensor(X):
+    if type(X) == type(torch.Tensor()):
+        return X
+    else:
+        return torch.Tensor(X)
+
+
+def plot_accuracy(acc_df):
+    acc_df.plot(xlabel='Epochs',
+                ylabel='Accuracy',
+                title='Training accuracy vs epoch')
+    plt.show()

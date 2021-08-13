@@ -19,7 +19,7 @@ class TwoLayer(nn.Module):
             Number of output neurons
         """
         super(TwoLayer, self).__init__()
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=0)
         self.lil = nn.Sequential(
             nn.Linear(D_in, H),
             nn.ReLU(inplace=True),
