@@ -69,3 +69,10 @@ def test_plot_accuracy():
     X, y = utils.toy_data(3)
     acc_df = utils.train(net, X, y)
     utils.plot_accuracy(acc_df)
+
+
+def test_load_steinmetz():
+    alldat = utils.load_steinmetz_dataset()
+    print(f'Number of session: {str(len(alldat))}')
+
+
