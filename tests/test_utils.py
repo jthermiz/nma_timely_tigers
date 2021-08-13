@@ -74,5 +74,3 @@ def test_plot_accuracy():
 def test_load_steinmetz():
     alldat = utils.load_steinmetz_dataset()
     print(f'Number of session: {str(len(alldat))}')
-
-

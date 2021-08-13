@@ -11,25 +11,25 @@ import os
 import requests
 
 
-def add(a, b):
-    """Add two numbers
+def toy_data(num_class, num_examples=100, num_features=2, noise=0.01):
+    """Generates toy dataset
 
     Parameters
     ----------
-    a : numeric
-        Any number
-    b : numeric
-        Any number
+    num_class : Int
+        Number of classes
+    num_examples : int, optional
+        Number of examples, by default 100
+    num_features : int, optional
+        Number of features, by default 2
+    noise : float, optional
+        Noise to signal ratio, by default 0.01
 
     Returns
     -------
-    Numeric
-        Sum of a and b
+    Tuple
+        Feature matrix, labels
     """
-    return a + b
-
-
-def toy_data(num_class, num_examples=100, num_features=2, noise=0.01):
     y = np.random.randint(num_class, size=num_examples)
     X = noise*np.random.randn(num_examples, num_features)
     for offset in range(num_class):
@@ -297,6 +297,18 @@ def parameters_equal(param1, param2):
 
 
 def convert_to_tensor(X):
+    """Convert numpy to tensor
+
+    Parameters
+    ----------
+    X : Numpy (or Tensor)
+        ND array
+
+    Returns
+    -------
+    Tensor
+        Tensor
+    """
     if type(X) == type(torch.Tensor()):
         return X
     else:
@@ -304,6 +316,13 @@ def convert_to_tensor(X):
 
 
 def plot_accuracy(acc_df):
+    """Plots accuracy training curve
+
+    Parameters
+    ----------
+    acc_df : DataFrame
+        2-column dataframe with train and validation accuracy
+    """
     acc_df.plot(xlabel='Epochs',
                 ylabel='Accuracy',
                 title='Training accuracy vs epoch')
