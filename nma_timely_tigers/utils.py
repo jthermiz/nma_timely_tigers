@@ -136,7 +136,7 @@ def train(model, X, y, epochs=10, criterion=None, optimizer=None, **kwargs):
 
     print('Finished training!')
     acc_df = pd.DataFrame(data=acc_mat,
-                          columns=['Train', 'Test'],
+                          columns=['Train', 'Validation'],
                           index=range(epochs))
     return acc_df
 
