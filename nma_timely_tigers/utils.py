@@ -54,7 +54,7 @@ def set_device():
     return device
 
 
-def train(model, X, y, epochs=10, criterion=None, optimizer=None, **kwargs):
+def train(model, X, y, epochs=150, criterion=None, optimizer=None, **kwargs):
     """Train a model
 
     Parameters
@@ -81,7 +81,7 @@ def train(model, X, y, epochs=10, criterion=None, optimizer=None, **kwargs):
         criterion = nn.CrossEntropyLoss()
 
     if optimizer is None:
-        optimizer = optim.SGD(model.parameters(), lr=1e-2)
+        optimizer = optim.Adam(model.parameters())
 
     if 'batch_size' in kwargs:
         batch_size = kwargs['batch_size']
