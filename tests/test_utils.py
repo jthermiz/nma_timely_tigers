@@ -31,8 +31,8 @@ def test_toy_data():
 
 def test_model(model):
     X, y = utils.toy_data()
-    train_acc = utils.train(model, X, y)  # TODO
-    print(f'Train accuracy: {str(train_acc)}')
+    train_acc, epoch = utils.train(model, X, y)
+    print(f'Train accuracy: {str(train_acc.values[epoch, 1])}')
 
 
 def test_shuffle_and_split_data():
@@ -58,6 +58,9 @@ def test_test():
 def test_train():
     net = models.TwoLayer(2, 10, 3)
     X, y = utils.toy_data(3)
+    device = utils.set_device()
+    X = utils.convert_to_tensor(X).to(device)
+    y = utils.convert_to_tensor(y).to(device)
     utils.train(net, X, y)
     acc = utils.test(net, X, y)
     # Accuracy varies widely brain on network and training parameters!
@@ -67,10 +70,22 @@ def test_train():
 def test_plot_accuracy():
     net = models.TwoLayer(2, 10, 3)
     X, y = utils.toy_data(3)
-    acc_df = utils.train(net, X, y)
+    acc_df, _ = utils.train(net, X, y)
     utils.plot_accuracy(acc_df)
 
 
 def test_load_steinmetz():
     alldat = utils.load_steinmetz_dataset()
     print(f'Number of session: {str(len(alldat))}')
+
+
+def test_shuffle():
+    spks = np.repeat(np.arange(0, 10), 2, axis=0).reshape(10, -1)
+    labels = np.zeros(10)
+    labels[5:] = 1
+    print('Original spikes and labels')
+    print(spks, labels)
+    print('')
+    spks_shuf = utils.shuffle_neurons(spks, labels)
+    print('Shuffled spikes')
+    print(spks_shuf)

@@ -1,10 +1,10 @@
+from genericpath import exists
 import torch
 import torch.nn as nn
 from torch.nn import utils
 import torch.optim as optim
 import numpy as np
 from torch.utils.data import DataLoader, TensorDataset
-from tqdm.notebook import tqdm, trange
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
@@ -103,16 +103,27 @@ def train(model, X, y, epochs=150, criterion=None, optimizer=None, **kwargs):
     else:
         seed = 0
 
+    if 'early_stop_count' in kwargs:
+        early_stop_count = kwargs['early_stop_count']
+    else:
+        early_stop_count = epochs+1
+
+    X = convert_to_tensor(X).float()
+    y = convert_to_tensor(y).long()
+
+    X = X.to(device)
+    y = y.to(device)
+
     X, y, Xval, yval = shuffle_and_split_data(X, y,
                                               train_frac=train_frac,
                                               seed=seed)
 
-    X = convert_to_tensor(X).float()
-    y = convert_to_tensor(y).long()
     train_data = TensorDataset(X, y)
     train_loader = DataLoader(train_data, batch_size=batch_size)
     acc_mat = np.zeros((epochs, 2))
+    model.to(device)
     model.train()
+    val_best_acc = 0
     for epoch in range(epochs):
         for data, target in train_loader:
             data, target = data.to(device), target.to(device)
@@ -128,6 +139,16 @@ def train(model, X, y, epochs=150, criterion=None, optimizer=None, **kwargs):
             acc_mat[epoch, 0] = train_acc
             acc_mat[epoch, 1] = val_acc
 
+        if val_acc < val_best_acc:
+            early_stop_ctr += 1
+        else:
+            val_best_acc = val_acc
+            early_stop_ctr = 0
+
+        if early_stop_ctr == early_stop_count:
+            print(f'Early stopped at {str(epoch)}')
+            break
+
         if (epoch % 1000) == 0:
             print(f'On epoch {str(epoch)} of {str(epochs)}')
             print(f'Train accuracy: {str(round(train_acc, 3))}')
@@ -138,7 +159,7 @@ def train(model, X, y, epochs=150, criterion=None, optimizer=None, **kwargs):
     acc_df = pd.DataFrame(data=acc_mat,
                           columns=['Train', 'Validation'],
                           index=range(epochs))
-    return acc_df
+    return acc_df, epoch
 
 
 def test(model, X, y, **kwargs):
@@ -332,6 +353,7 @@ def plot_accuracy(acc_df):
                 ylabel='Accuracy',
                 title='Training accuracy vs epoch')
     plt.show()
+    return plt.gcf, plt.gca
 
 
 def load_steinmetz_dataset():
@@ -343,25 +365,30 @@ def load_steinmetz_dataset():
         List of 'dat' dictionary for each experimental session
     """
 
-    fname = []
-    for j in range(3):
-        fname.append('steinmetz_part%d.npz' % j)
-        url = ["https://osf.io/agvxh/download"]
-        url.append("https://osf.io/uv3mw/download")
-        url.append("https://osf.io/ehmw2/download")
+    if not exists('steinmetz_part0.npz'):
+        print('Attempting to download data')
+        fname = []
+        for j in range(3):
+            fname.append('steinmetz_part%d.npz' % j)
+            url = ["https://osf.io/agvxh/download"]
+            url.append("https://osf.io/uv3mw/download")
+            url.append("https://osf.io/ehmw2/download")
 
-    for j in range(len(url)):
-        if not os.path.isfile(fname[j]):
-            try:
-                r = requests.get(url[j])
-            except requests.ConnectionError:
-                print("!!! Failed to download data !!!")
-            else:
-                if r.status_code != requests.codes.ok:
+        for j in range(len(url)):
+            if not os.path.isfile(fname[j]):
+                try:
+                    r = requests.get(url[j])
+                except requests.ConnectionError:
                     print("!!! Failed to download data !!!")
                 else:
-                    with open(fname[j], "wb") as fid:
-                        fid.write(r.content)
+                    if r.status_code != requests.codes.ok:
+                        print("!!! Failed to download data !!!")
+                    else:
+                        with open(fname[j], "wb") as fid:
+                            fid.write(r.content)
+    else:
+        print('Loading data from disk')
+        fname = ['steinmetz_part%d.npz' % j for j in range(3)]
 
     alldat = np.array([])
     for j in range(len(fname)):
@@ -369,3 +396,66 @@ def load_steinmetz_dataset():
             (alldat, np.load('steinmetz_part%d.npz' % j, allow_pickle=True)['dat']))
 
     return alldat
+
+
+def shuffle_neurons(spks, labels, seed=0):
+    """Shuffle neurons across same trials
+
+    Parameters
+    ----------
+    spks : numpy.array
+        Spike matrix, trials x neurons
+    labels : sequence
+        Sequence of trial labels
+    seed : int, optional
+        Random seed, by default 0
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
+    types = np.unique(labels)
+    spks_shuf = np.zeros_like(spks)
+
+    for type in types:
+        tmp = spks[type == labels]
+        num_trial, num_neuron = tmp.shape
+        for nidx in range(num_neuron):
+            np.random.seed(nidx)
+            shuf_idx = np.random.permutation(num_trial)
+            spks_shuf[type == labels, nidx] = tmp[shuf_idx, nidx]
+
+    return spks_shuf
+
+
+def norm_l1(model):
+    """Calculate l1 norm
+
+    Parameters
+    ----------
+    model : nn.module
+        Pytorch
+
+    Returns
+    -------
+    Tensor
+        l1 morm
+    """
+    norm = 0
+    for param in model.parameters():
+        norm += torch.abs(torch.flatten(param))
+    return norm
+
+
+def stimulus_labels(dat):
+    num_trials = dat['spks'].shape[1]
+    y = np.zeros(num_trials)
+
+    left = dat['contrast_left']
+    right = dat['contrast_right']
+
+    y[left > right] = 1
+    y[left < right] = 2
+
+    return y
