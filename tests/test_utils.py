@@ -1,5 +1,6 @@
 from nma_timely_tigers import utils, models
 import numpy as np
+import os
 
 
 def test_add():
@@ -89,3 +90,23 @@ def test_shuffle():
     spks_shuf = utils.shuffle_neurons(spks, labels)
     print('Shuffled spikes')
     print(spks_shuf)
+
+
+def test_calc_correlations():
+    X = np.random.randn(10, 10)
+    C = utils.calc_correlations(X)
+    print(C)
+    print(len(C))
+
+
+def test_animal_correctness_labels():
+    os.chdir('analyses/')
+    alldat = utils.load_steinmetz_dataset()
+    dat = alldat[0]
+    z = utils.animal_correctness_labels(dat)
+    print(z)
+    print(len(z))
+    os.chdir('..')
+
+
+test_animal_correctness_labels()

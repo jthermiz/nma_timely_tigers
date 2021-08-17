@@ -459,3 +459,41 @@ def stimulus_labels(dat):
     y[left < right] = 2
 
     return y
+
+
+def calc_correlations(X):
+    """Calculate correlation pairs among all columns
+
+    Parameters
+    ----------
+    X : 2D array
+        Feature matrix, examples by variables
+
+    Returns
+    -------
+    1D array
+        Correlations with everything at or above the diagnonal removed
+    """
+    C = np.corrcoef(X)
+    C = np.tril(C)
+    C = C[C != 0]
+    C = C[C != 1]
+    C = np.reshape(C, (-1, 1))
+    return C
+
+def _remap_label(x):
+    if x == 0:
+        x = 1
+    elif x == 1:
+        x = 2
+    elif x == 2:
+        x = 0
+    return x
+
+def animal_correctness_labels(dat):
+    y = stimulus_labels(dat)  # 0: nogo, 1: left, 2: right
+    y = list(map(_remap_label, y))  # 0: right, 1: nogo, 2: left
+    yh = dat['response'] + 1  # 0: right, 1: nogo, 2: left
+    z = np.zeros(len(y))  # incorrect
+    z[yh == y] = 1  # correct
+    return z
