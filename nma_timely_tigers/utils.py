@@ -481,7 +481,20 @@ def calc_correlations(X):
     C = np.reshape(C, (-1, 1))
     return C
 
+
 def _remap_label(x):
+    """Remap stimulus label
+
+    Parameters
+    ----------
+    x : Int
+        Stimulus label
+
+    Returns
+    -------
+    Int
+        Stimulus label
+    """
     if x == 0:
         x = 1
     elif x == 1:
@@ -490,7 +503,20 @@ def _remap_label(x):
         x = 0
     return x
 
+
 def animal_correctness_labels(dat):
+    """Whether the animal made the correct or incorrect choice
+
+    Parameters
+    ----------
+    dat : dict
+        Steinmetz dat dict
+
+    Returns
+    -------
+    1D array
+        The animal correctness labels
+    """
     y = stimulus_labels(dat)  # 0: nogo, 1: left, 2: right
     y = list(map(_remap_label, y))  # 0: right, 1: nogo, 2: left
     yh = dat['response'] + 1  # 0: right, 1: nogo, 2: left
