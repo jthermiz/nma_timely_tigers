@@ -74,8 +74,9 @@ def train(model, X, y, epochs=150, criterion=None, optimizer=None, **kwargs):
 
     Returns
     -------
-    Dataframe
-        Train and validation accuracies
+    Tuple
+        Dataframe: Train and validation accuracies, 
+        epoch: Epoch number where training stopped
     """
     if criterion is None:
         criterion = nn.CrossEntropyLoss()
@@ -124,12 +125,15 @@ def train(model, X, y, epochs=150, criterion=None, optimizer=None, **kwargs):
     model.to(device)
     model.train()
     val_best_acc = 0
+    early_stop_ctr = 0
     for epoch in range(epochs):
         for data, target in train_loader:
             data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             output = model(data)
 
+            #loss = criterion(torch.argmax(output, dim=1), target)
+            # errors out during transformer training
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
