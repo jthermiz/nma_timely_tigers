@@ -123,11 +123,8 @@ def test_transformer_train():
     num_examples, in_dim, num_points = 32, 100, 75
     out_dim = 3
     X = torch.randn(num_examples, num_points, in_dim)
-    y = torch.randint(0, high=3, size=(num_examples, 1))
+    y = torch.randint(0, high=3, size=(num_examples, ))
     net = models.Transformer(in_dim, out_dim)
     criterion = torch.nn.functional.nll_loss
     acc, epoch = utils.train(net, X, y, criterion=None)
     print(f'Train accuracy: {str(round(acc, 3))}')
-
-
-test_transformer_train()

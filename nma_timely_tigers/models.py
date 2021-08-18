@@ -180,7 +180,7 @@ class Transformer(nn.Module):
         self.softmax = nn.Softmax(dim=0)
 
     def forward(self, x):
-        
+
         #x = self.pos_enc(x)
         x = self.transformer_blocks(x)
         sequence_avg = x.mean(dim=1)

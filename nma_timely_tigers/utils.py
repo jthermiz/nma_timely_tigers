@@ -195,7 +195,7 @@ def test(model, X, y, **kwargs):
         # Assume that everything is in the same memory space
         #inputs = inputs.to(device).float()
         #labels = labels.to(device).long()
-
+        inputs = torch.unsqueeze(inputs, dim=0)  # add batch dim
         outputs = model(inputs)
         predicted = torch.argmax(outputs)
         correct += (predicted == labels).sum().item()
