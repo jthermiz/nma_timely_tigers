@@ -449,6 +449,18 @@ def norm_l1(model):
 
 
 def stimulus_labels(dat):
+    """Stimulus lables for Steinmetz animal experiment
+
+    Parameters
+    ----------
+    dat : dict
+        Steinmetz dat dict
+
+    Returns
+    -------
+    1D array
+        Stimulus labels
+    """
     num_trials = dat['spks'].shape[1]
     y = np.zeros(num_trials)
 
